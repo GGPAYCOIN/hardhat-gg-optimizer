@@ -88,6 +88,26 @@ In `ggchain` mode a wallet is generated at `~/.gg-optimizer/wallet.json`; send i
 
 > ⚠️ **About the `require` → custom-error fix (GG-GAS-01):** it changes the revert data from a string to an error selector (dApps/tests matching the revert *string* must be updated), and it is applied **only to files containing a single contract**. Review the diff with git before committing — as with all auto-fixes.
 
+## CI report mode
+
+`gg-scan` can emit machine-readable reports so teams can post findings on pull requests automatically:
+
+```bash
+npx hardhat gg-scan --json                                      # JSON to stdout
+npx hardhat gg-scan --markdown --output gg-report.md            # PR-comment-ready Markdown file
+npx hardhat gg-scan --json --fail-on-high                       # exit 1 on any HIGH-severity finding
+```
+
+GitHub Actions example (posts the report as a sticky PR comment and fails the job on high-severity findings):
+
+```yaml
+- run: npx hardhat gg-scan --markdown --output gg-report.md --fail-on-high
+- uses: marocchino/sticky-pull-request-comment@v2
+  if: always()
+  with:
+    path: gg-report.md
+```
+
 ## What it checks
 
 **Gas (GG-GAS-\*)**: string `require` messages, `memory` vs `calldata`, `i++` vs unchecked `++i`, `.length` in loop conditions, redundant `= 0` init, `x > 0` vs `x != 0`, `public` → `external` candidates, `immutable`/`constant` candidates, unpacked small-type storage variables.

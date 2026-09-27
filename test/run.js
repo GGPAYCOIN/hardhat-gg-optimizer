@@ -157,6 +157,20 @@ let httpRpc = false;
 try { quota.resolveRpc("http://rpc.gghyper.net"); } catch (e) { httpRpc = true; }
 check("non-https RPC rejected", httpRpc);
 
+// 4) CI report mode (JSON + Markdown)
+const { toJson, toMarkdown } = require("../src/report");
+console.log("\nCI report mode:");
+const ciReport = analyzeFiles([samplePath]);
+const j = toJson(ciReport);
+check("json has tool + version", j.tool === "hardhat-gg-optimizer" && typeof j.version === "string");
+check("json summary counts high severity", j.summary.highSeverity > 0);
+check("json findings carry lines arrays", j.files[0].findings.length > 0 && Array.isArray(j.files[0].findings[0].lines));
+check("json round-trips through JSON.stringify", JSON.parse(JSON.stringify(j)).files.length === j.files.length);
+const md = toMarkdown(ciReport);
+check("markdown has report header", md.includes("gg-optimizer report"));
+check("markdown has findings table", md.includes("| Rule | Severity |"));
+check("empty markdown report says no findings", toMarkdown([]).includes("No findings"));
+
 console.log("");
 if (failures > 0) {
   console.log("\x1b[31m" + failures + " test(s) failed\x1b[0m");

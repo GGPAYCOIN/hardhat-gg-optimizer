@@ -55,10 +55,39 @@ subtask(TASK_COMPILE_SOLIDITY_EMIT_ARTIFACTS).setAction(
   }
 );
 
-// Manual task: npx hardhat gg-scan
+// Manual task: npx hardhat gg-scan [--json|--markdown] [--output <file>] [--fail-on-high]
 task("gg-scan", "Scan contracts for gas savings and common vulnerabilities")
-  .setAction(async (_args, hre) => {
-    await hre.run("compile");
+  .addFlag("json", "Print the report as JSON (CI-friendly, skips compile)")
+  .addFlag("markdown", "Print the report as Markdown (paste into a PR comment)")
+  .addOptionalParam("output", "Write the report to a file instead of stdout")
+  .addFlag("failOnHigh", "Exit with code 1 when high-severity findings exist")
+  .setAction(async (args, hre) => {
+    const ci = args.json || args.markdown || !!args.output;
+    if (!ci) {
+      await hre.run("compile");
+      if (args.failOnHigh) {
+        const { totalHigh } = runScan(hre, { silent: true });
+        if (totalHigh > 0) {
+          process.exitCode = 1;
+          console.error(`[gg-optimizer] ${totalHigh} high-severity finding(s) — failing (--fail-on-high)`);
+        }
+      }
+      return;
+    }
+    const { toJson, toMarkdown } = require("./report");
+    const report = analyzeFiles(collectSources(hre));
+    const json = toJson(report);
+    const out = args.markdown ? toMarkdown(report) : JSON.stringify(json, null, 2) + "\n";
+    if (args.output) {
+      require("fs").writeFileSync(args.output, out);
+      console.log(`[gg-optimizer] report written to ${args.output}`);
+    } else {
+      process.stdout.write(out);
+    }
+    if (args.failOnHigh && json.summary.highSeverity > 0) {
+      process.exitCode = 1;
+      console.error(`[gg-optimizer] ${json.summary.highSeverity} high-severity finding(s) — failing (--fail-on-high)`);
+    }
   });
 
 // Premium task: npx hardhat gg-fix [--yes] [--dry-run]
