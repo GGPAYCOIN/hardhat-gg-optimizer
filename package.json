@@ -1,0 +1,33 @@
+{
+  "name": "hardhat-gg-optimizer",
+  "version": "0.1.0",
+  "description": "Free Hardhat plugin: gas optimization hints + common Solidity vulnerability scanning, printed right after every compile.",
+  "main": "src/index.js",
+  "files": [
+    "src/",
+    "README.md"
+  ],
+  "keywords": [
+    "hardhat",
+    "hardhat-plugin",
+    "solidity",
+    "gas",
+    "gas-optimization",
+    "security",
+    "audit",
+    "ethereum",
+    "ggchain"
+  ],
+  "scripts": {
+    "test": "node test/run.js"
+  },
+  "peerDependencies": {
+    "hardhat": "^2.0.0"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GGPAYCOIN/hardhat-gg-optimizer"
+  },
+  "homepage": "https://marketpro.live"
+}
