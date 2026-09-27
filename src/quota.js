@@ -109,12 +109,79 @@ function planPremiumAction({ network = process.env.GG_OPTIMIZER_NETWORK || "mock
   };
 }
 
+// ---- real on-chain GG burn (opt-in via GG_OPTIMIZER_NETWORK=ggchain) ----
+// GG is the native coin of GGChain, so a "burn" = sending value to the standard
+// dead address. Requires `ethers` (peer) and the local wallet to hold GG + gas.
+const BURN_ADDRESS = "0x000000000000000000000000000000000000dEaD";
+const DEFAULT_RPC = "https://rpc.gghyper.net";
+
+function loadEthers() {
+  try {
+    return require("ethers");
+  } catch (e) {
+    return null;
+  }
+}
+
+async function onchainBalance(privKey, rpc) {
+  const ethers = loadEthers();
+  if (!ethers) throw new Error("ethers not installed (npm i ethers) — needed for on-chain GG mode");
+  const provider = new ethers.JsonRpcProvider(rpc);
+  const wallet = new ethers.Wallet(privKey.startsWith("0x") ? privKey : "0x" + privKey, provider);
+  const wei = await provider.getBalance(wallet.address);
+  return { ethers, provider, wallet, gg: Number(ethers.formatEther(wei)) };
+}
+
+async function onchainBurn(privKey, rpc, amountGg) {
+  const { ethers, wallet } = await onchainBalance(privKey, rpc);
+  const tx = await wallet.sendTransaction({
+    to: BURN_ADDRESS,
+    value: ethers.parseEther(String(amountGg)),
+  });
+  const receipt = await tx.wait();
+  return receipt.hash;
+}
+
+// Async planner for the real on-chain path.
+async function planPremiumActionOnchain(rpc) {
+  const walletFull = JSON.parse(fs.readFileSync(WALLET_FILE, "utf8"));
+  const usage = readUsage();
+  const freeLeft = Math.max(0, FREE_PREMIUM_RUNS - usage.premiumRuns);
+  if (freeLeft > 0) {
+    return {
+      wallet: { address: walletFull.address }, network: "ggchain", chargeNeeded: false,
+      cost: 0, freeLeft: freeLeft - 1,
+      message: `Free allowance: ${freeLeft} premium run(s) left (no GG needed).`,
+      commit: async () => { usage.premiumRuns += 1; writeUsage(usage); },
+    };
+  }
+  const { gg } = await onchainBalance(walletFull.priv, rpc);
+  const enough = gg >= COST_PER_FIX;
+  return {
+    wallet: { address: walletFull.address }, network: "ggchain", chargeNeeded: true,
+    cost: COST_PER_FIX, balance: gg, enough,
+    message: enough
+      ? `This premium run burns ${COST_PER_FIX} GG on GGChain. Balance: ${gg} GG.`
+      : `Free allowance used. Need ${COST_PER_FIX} GG on GGChain. Wallet ${walletFull.address} balance: ${gg} GG.`,
+    commit: async () => {
+      if (!enough) throw new Error("insufficient GG balance");
+      const hash = await onchainBurn(walletFull.priv, rpc, COST_PER_FIX);
+      usage.premiumRuns += 1; usage.creditsSpent += COST_PER_FIX; writeUsage(usage);
+      return hash;
+    },
+  };
+}
+
 module.exports = {
   planPremiumAction,
+  planPremiumActionOnchain,
+  onchainBalance,
   getOrCreateWallet,
   readUsage,
   mockBalance,
   FREE_PREMIUM_RUNS,
   COST_PER_FIX,
+  BURN_ADDRESS,
+  DEFAULT_RPC,
   HOME,
 };

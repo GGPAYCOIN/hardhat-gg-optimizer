@@ -10,7 +10,7 @@ const {
 } = require("hardhat/builtin-tasks/task-names");
 const { analyzeFiles, printReport } = require("./analyzer");
 const { fixFile } = require("./fix");
-const { planPremiumAction } = require("./quota");
+const { planPremiumAction, planPremiumActionOnchain, DEFAULT_RPC } = require("./quota");
 
 // Gather the project's own .sol sources (skip dependencies).
 function collectSources(hre) {
@@ -94,20 +94,24 @@ task("gg-fix", "Auto-apply safe gas fixes (premium after free allowance)")
     }
 
     // Transparent quota / consent.
-    const plan = planPremiumAction();
+    const network = process.env.GG_OPTIMIZER_NETWORK || "mock";
+    const plan =
+      network === "ggchain"
+        ? await planPremiumActionOnchain(process.env.GGCHAIN_RPC || DEFAULT_RPC)
+        : planPremiumAction();
     console.log(`\n\x1b[36m${plan.message}\x1b[0m`);
     if (plan.chargeNeeded) {
       console.log(`  wallet: \x1b[1m${plan.wallet.address}\x1b[0m  network: ${plan.network}`);
       if (!plan.enough) {
         console.log(
           `\n\x1b[33mNot enough GG. Top up this wallet, then re-run.\x1b[0m` +
-          `\n\x1b[2m(testnet/mock: add credits with GG_OPTIMIZER_TOPUP; mainnet coming soon)\x1b[0m\n`
+          `\n\x1b[2m(mock mode: local credits; ggchain mode: send GG to the wallet above)\x1b[0m\n`
         );
         return;
       }
       if (!args.yes && process.env.GG_OPTIMIZER_YES !== "1") {
         console.log(
-          `\n\x1b[33mThis will spend ${plan.cost} GG.\x1b[0m Re-run with \x1b[1m--yes\x1b[0m to confirm.` +
+          `\n\x1b[33mThis will spend ${plan.cost} GG${network === "ggchain" ? " (real, on-chain burn)" : ""}.\x1b[0m Re-run with \x1b[1m--yes\x1b[0m to confirm.` +
           `\n\x1b[2mNo GG has been spent.\x1b[0m\n`
         );
         return;
@@ -115,14 +119,17 @@ task("gg-fix", "Auto-apply safe gas fixes (premium after free allowance)")
     }
 
     // Commit charge (if any), then write fixes.
-    plan.commit();
+    const receipt = await plan.commit();
     let applied = 0;
     for (const { file } of perFile) {
       const res = fixFile(file);
       applied += res.count;
     }
     console.log(`\n\x1b[32m✔ Applied ${applied} safe fix(es). Review the diff with git.\x1b[0m`);
-    if (plan.chargeNeeded) console.log(`\x1b[2mCharged ${plan.cost} GG (${plan.network}).\x1b[0m`);
+    if (plan.chargeNeeded) {
+      console.log(`\x1b[2mCharged ${plan.cost} GG (${plan.network}).\x1b[0m`);
+      if (receipt) console.log(`\x1b[2mburn tx: ${receipt}\x1b[0m`);
+    }
     console.log("");
   });
 

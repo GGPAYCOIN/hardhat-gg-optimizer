@@ -76,6 +76,7 @@ function extractFunctions(clean) {
     fns.push({
       name: m[1],
       header: m[0],
+      headerStart: headerStart,
       body: clean.slice(bodyStart, i + 1),
       start: bodyStart,
       line: lineAt(clean, headerStart),
