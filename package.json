@@ -1,6 +1,6 @@
 {
   "name": "hardhat-gg-optimizer",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Free Hardhat plugin: gas optimization hints + common Solidity vulnerability scanning, printed right after every compile.",
   "main": "src/index.js",
   "files": [

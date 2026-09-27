@@ -171,6 +171,19 @@ check("markdown has report header", md.includes("gg-optimizer report"));
 check("markdown has findings table", md.includes("| Rule | Severity |"));
 check("empty markdown report says no findings", toMarkdown([]).includes("No findings"));
 
+// 5) README badge generator
+const { toBadge } = require("../src/report");
+console.log("\nBadge generator:");
+const cleanBadge = toBadge([]);
+check("clean badge is brightgreen 'clean'", cleanBadge.message === "clean" && cleanBadge.color === "brightgreen");
+check("badge escapes dashes for shields.io", cleanBadge.url.includes("gg--optimizer-clean-brightgreen"));
+check("badge markdown links to npm", cleanBadge.markdown.includes("img.shields.io") && cleanBadge.markdown.includes("npmjs.com/package/hardhat-gg-optimizer"));
+const highBadge = toBadge(ciReport);
+check("high-severity badge is red", highBadge.color === "red" && highBadge.message.includes("high"));
+const gasOnly = [{ file: "x.sol", sec: [], gas: [{ rule: { id: "GG-GAS-03", name: "n", saving: "s", fix: "f" }, hits: [{ line: 1 }, { line: 2 }] }] }];
+const yellowBadge = toBadge(gasOnly);
+check("findings-only badge is yellow with count", yellowBadge.color === "yellow" && yellowBadge.message === "2 findings");
+
 console.log("");
 if (failures > 0) {
   console.log("\x1b[31m" + failures + " test(s) failed\x1b[0m");

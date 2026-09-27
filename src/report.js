@@ -75,4 +75,24 @@ function toMarkdown(report) {
   return lines.join("\n") + "\n";
 }
 
-module.exports = { toJson, toMarkdown };
+// "gg-optimizer clean" README badge (shields.io static badge, no server needed).
+function toBadge(report) {
+  const s = toJson(report).summary;
+  let message, color;
+  if (s.highSeverity > 0) {
+    message = s.highSeverity + " high severity";
+    color = "red";
+  } else if (s.gasFindings + s.securityFindings > 0) {
+    message = (s.gasFindings + s.securityFindings) + " findings";
+    color = "yellow";
+  } else {
+    message = "clean";
+    color = "brightgreen";
+  }
+  const esc = (t) => String(t).replace(/-/g, "--").replace(/_/g, "__").replace(/ /g, "_");
+  const url = `https://img.shields.io/badge/${esc("gg-optimizer")}-${esc(message)}-${color}`;
+  const link = "https://www.npmjs.com/package/hardhat-gg-optimizer";
+  return { message, color, url, markdown: `[![gg-optimizer](${url})](${link})` };
+}
+
+module.exports = { toJson, toMarkdown, toBadge };

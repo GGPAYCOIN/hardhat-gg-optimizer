@@ -108,6 +108,23 @@ GitHub Actions example (posts the report as a sticky PR comment and fails the jo
     path: gg-report.md
 ```
 
+## README badge
+
+Show a live "gg-optimizer clean" badge in your project's README:
+
+```bash
+npx hardhat gg-scan --badge                # prints the Markdown snippet
+npx hardhat gg-scan --badge --output badge.md
+```
+
+Output (paste into README.md):
+
+```md
+[![gg-optimizer](https://img.shields.io/badge/gg--optimizer-clean-brightgreen)](https://www.npmjs.com/package/hardhat-gg-optimizer)
+```
+
+The badge reflects your latest scan: **clean** (green), **N findings** (yellow), or **N high severity** (red). Regenerate it in CI so it always matches the code.
+
 ## What it checks
 
 **Gas (GG-GAS-\*)**: string `require` messages, `memory` vs `calldata`, `i++` vs unchecked `++i`, `.length` in loop conditions, redundant `= 0` init, `x > 0` vs `x != 0`, `public` → `external` candidates, `immutable`/`constant` candidates, unpacked small-type storage variables.

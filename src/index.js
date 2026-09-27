@@ -61,8 +61,9 @@ task("gg-scan", "Scan contracts for gas savings and common vulnerabilities")
   .addFlag("markdown", "Print the report as Markdown (paste into a PR comment)")
   .addOptionalParam("output", "Write the report to a file instead of stdout")
   .addFlag("failOnHigh", "Exit with code 1 when high-severity findings exist")
+  .addFlag("badge", "Print a README badge (Markdown) reflecting the scan result")
   .setAction(async (args, hre) => {
-    const ci = args.json || args.markdown || !!args.output;
+    const ci = args.json || args.markdown || args.badge || !!args.output;
     if (!ci) {
       await hre.run("compile");
       if (args.failOnHigh) {
@@ -74,10 +75,12 @@ task("gg-scan", "Scan contracts for gas savings and common vulnerabilities")
       }
       return;
     }
-    const { toJson, toMarkdown } = require("./report");
+    const { toJson, toMarkdown, toBadge } = require("./report");
     const report = analyzeFiles(collectSources(hre));
     const json = toJson(report);
-    const out = args.markdown ? toMarkdown(report) : JSON.stringify(json, null, 2) + "\n";
+    const out = args.badge
+      ? toBadge(report).markdown + "\n"
+      : args.markdown ? toMarkdown(report) : JSON.stringify(json, null, 2) + "\n";
     if (args.output) {
       require("fs").writeFileSync(args.output, out);
       console.log(`[gg-optimizer] report written to ${args.output}`);
