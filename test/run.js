@@ -121,6 +121,42 @@ check("no i++ false positive (uses ++i)", !clean.gas.some((r) => r.rule.id === "
 check("no .length-in-loop false positive (cached)", !clean.gas.some((r) => r.rule.id === "GG-GAS-04"));
 check("floating pragma NOT flagged when pinned", !clean.sec.some((r) => r.rule.id === "GG-SEC-06"));
 
+// 3) Keystore + official RPC lock (v0.3.0 security features)
+const { encryptKey, decryptKey } = require("../src/keystore");
+const quota = require("../src/quota");
+const fsT = require("fs");
+const osT = require("os");
+
+console.log("\nKeystore + RPC lock:");
+const ksPriv = "0x" + "ab".repeat(32);
+const ks = encryptKey(ksPriv, "s3cret");
+check("keystore holds no plaintext key", !JSON.stringify(ks).includes("ab".repeat(32)));
+check("keystore decrypts with right password", decryptKey(ks, "s3cret") === ksPriv);
+let wrongPw = false;
+try { decryptKey(ks, "nope"); } catch (e) { wrongPw = true; }
+check("wrong password rejected", wrongPw);
+
+const tmpWallet = path.join(osT.tmpdir(), "gg-test-wallet-" + Date.now() + ".json");
+fsT.writeFileSync(tmpWallet, JSON.stringify({ address: "0x1234", priv: ksPriv, createdAt: "x" }));
+quota.encryptWalletInPlace("pw123", tmpWallet);
+const encW = JSON.parse(fsT.readFileSync(tmpWallet, "utf8"));
+check("wallet file encrypted in place (v2, no plaintext priv)", encW.version === 2 && !!encW.keystore && encW.priv === undefined);
+check("encrypted wallet key decryptable", quota.decryptWalletKey("pw123", tmpWallet) === ksPriv);
+let noPw = false;
+try { quota.decryptWalletKey(null, tmpWallet); } catch (e) { noPw = true; }
+check("decrypt without password refused", noPw);
+fsT.unlinkSync(tmpWallet);
+
+check("official RPC accepted", quota.resolveRpc("https://rpc.gghyper.net") === "https://rpc.gghyper.net");
+check("official RPC accepted (trailing slash)", quota.resolveRpc("https://rpc.gghyper.net/") === "https://rpc.gghyper.net");
+check("empty defaults to official RPC", quota.resolveRpc(undefined) === "https://rpc.gghyper.net");
+let badRpc = false;
+try { quota.resolveRpc("https://evil-rpc.example.com"); } catch (e) { badRpc = true; }
+check("unofficial RPC rejected", badRpc);
+let httpRpc = false;
+try { quota.resolveRpc("http://rpc.gghyper.net"); } catch (e) { httpRpc = true; }
+check("non-https RPC rejected", httpRpc);
+
 console.log("");
 if (failures > 0) {
   console.log("\x1b[31m" + failures + " test(s) failed\x1b[0m");

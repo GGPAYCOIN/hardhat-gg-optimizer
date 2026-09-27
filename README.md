@@ -64,14 +64,23 @@ Scanning is free forever. `gg-fix`:
 
 ```bash
 export GG_OPTIMIZER_NETWORK=ggchain
-export GGCHAIN_RPC=https://rpc.gghyper.net   # optional, this is the default
-npx hardhat gg-fix --yes                     # burns GG from your local wallet (needs `ethers`)
+npx hardhat gg-fix --yes   # burns GG from your local wallet (needs `ethers`)
 ```
 
 In `ggchain` mode a wallet is generated at `~/.gg-optimizer/wallet.json`; send it a little GG to cover fixes + gas.
 
+**Official RPC lock:** `ggchain` mode only ever talks to the official endpoint `https://rpc.gghyper.net`. Any other `GGCHAIN_RPC` value is rejected — this protects your wallet from RPC spoofing / malicious nodes.
+
 ### Wallet security
 
+- **Encrypted keystore:** the private key can be password-encrypted at rest (scrypt + AES-256-GCM) so a stolen `wallet.json` alone cannot spend your GG:
+
+  ```bash
+  npx hardhat gg-wallet            # show address + encryption status
+  npx hardhat gg-wallet --encrypt  # password-protect the key (prompted, hidden input)
+  ```
+
+  Or set `GG_OPTIMIZER_PASSWORD` (e.g. in CI) — new wallets are then created encrypted, and existing plaintext ones are upgraded automatically. **`ggchain` mode refuses to run with an unencrypted key.** The password is never stored; if you lose it, the key is unrecoverable — back it up.
 - The keyfile lives at `~/.gg-optimizer/wallet.json` (`chmod 600`). **Back it up** and keep only **small amounts** in it — treat it like petty cash, not a vault.
 - The displayed address is the real on-chain address derived from the stored key.
 - We will **never** ask for your private key. Anyone who does is scamming you.
