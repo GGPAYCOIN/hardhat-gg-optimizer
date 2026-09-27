@@ -1,7 +1,7 @@
 {
   "name": "hardhat-gg-optimizer",
-  "version": "0.5.1",
-  "description": "Free Hardhat plugin: gas optimization hints + common Solidity vulnerability scanning, printed right after every compile.",
+  "version": "0.5.2",
+  "description": "The first Hardhat plugin that burns GG to auto-fix your Solidity — make your code cheaper, make GG scarcer. Free gas + security scan after every compile.",
   "main": "src/index.js",
   "files": [
     "src/",
@@ -16,7 +16,10 @@
     "security",
     "audit",
     "ethereum",
-    "ggchain"
+    "ggchain",
+    "deflationary",
+    "burn",
+    "gg"
   ],
   "scripts": {
     "test": "node test/run.js"

@@ -1,6 +1,8 @@
 # hardhat-gg-optimizer
 
-A free, zero-config Hardhat plugin that scans your Solidity for **gas savings** and **common vulnerabilities** — printed automatically right after every `compile`. No account, no signup.
+**The first Hardhat plugin that burns GG to auto-fix your code — make your code cheaper, make GG scarcer.**
+
+A free, zero-config Hardhat plugin that scans your Solidity for **gas savings** and **common vulnerabilities** — printed automatically right after every `compile`. No account, no signup. Auto-fixing (`gg-fix`) is free for 3 runs; after that each run burns exactly **1 GG on-chain** (opt-in, never without your explicit `--yes`) — every fix makes your contract cheaper and the GG supply smaller.
 
 ## Install
 
