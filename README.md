@@ -49,12 +49,17 @@ npx hardhat gg-fix --dry-run  # preview only
 - read-only `memory` params → `calldata` (GG-GAS-02, only when the param isn't mutated)
 - `require(cond, "msg")` → a custom error + `if (!(cond)) revert E();` (GG-GAS-01, single-contract files)
 
-### Pricing (transparent)
+### Pricing (transparent & exact)
 
-Scanning is free forever. `gg-fix` includes a free allowance, then costs a small amount of **GG**:
+Scanning is free forever. `gg-fix`:
+
+| | |
+|---|---|
+| First **3** `gg-fix` runs | **free** |
+| After that | **1 GG per run** (fixed in code, no surprises) |
 
 - Nothing is ever charged without an explicit `--yes` (or `GG_OPTIMIZER_YES=1`).
-- The command prints your local wallet address and the exact cost first.
+- The command prints your wallet address, balance and the exact cost first — `--dry-run` never charges.
 - Default mode is `mock` (local credits, no real chain). To use real on-chain GG:
 
 ```bash
@@ -64,6 +69,15 @@ npx hardhat gg-fix --yes                     # burns GG from your local wallet (
 ```
 
 In `ggchain` mode a wallet is generated at `~/.gg-optimizer/wallet.json`; send it a little GG to cover fixes + gas.
+
+### Wallet security
+
+- The keyfile lives at `~/.gg-optimizer/wallet.json` (`chmod 600`). **Back it up** and keep only **small amounts** in it — treat it like petty cash, not a vault.
+- The displayed address is the real on-chain address derived from the stored key.
+- We will **never** ask for your private key. Anyone who does is scamming you.
+- Install only the official package: `hardhat-gg-optimizer` (source: [github.com/GGPAYCOIN/hardhat-gg-optimizer](https://github.com/GGPAYCOIN/hardhat-gg-optimizer)). Beware of look-alike names.
+
+> ⚠️ **About the `require` → custom-error fix (GG-GAS-01):** it changes the revert data from a string to an error selector (dApps/tests matching the revert *string* must be updated), and it is applied **only to files containing a single contract**. Review the diff with git before committing — as with all auto-fixes.
 
 ## What it checks
 

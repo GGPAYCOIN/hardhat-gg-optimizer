@@ -26,20 +26,54 @@ function ensureDir() {
   if (!fs.existsSync(HOME)) fs.mkdirSync(HOME, { recursive: true, mode: 0o700 });
 }
 
-// Deterministic pseudo-address from a random private key (mock; not a real signer).
+// Real EVM address derivation (needs ethers). Returns null when unavailable.
+function realAddressFromPriv(priv) {
+  const ethers = loadEthersEarly();
+  if (!ethers) return null;
+  try {
+    return new ethers.Wallet(priv.startsWith("0x") ? priv : "0x" + priv).address;
+  } catch (e) {
+    return null;
+  }
+}
+
+function loadEthersEarly() {
+  try { return require("ethers"); } catch (e) { return null; }
+}
+
 function getOrCreateWallet() {
   ensureDir();
   if (fs.existsSync(WALLET_FILE)) {
-    return JSON.parse(fs.readFileSync(WALLET_FILE, "utf8"));
+    const w = JSON.parse(fs.readFileSync(WALLET_FILE, "utf8"));
+    // Migration: older versions stored a pseudo (hash) address. Replace it with
+    // the REAL address derived from the private key so funds are never sent to
+    // an unspendable address.
+    const real = realAddressFromPriv(w.priv);
+    if (real && w.address !== real) {
+      w.address = real;
+      fs.writeFileSync(WALLET_FILE, JSON.stringify(w, null, 2), { mode: 0o600 });
+      console.warn("[gg-optimizer] wallet address corrected to the real on-chain address: " + real);
+    }
+    return { address: w.address, real: !!real || undefined };
   }
-  const priv = crypto.randomBytes(32).toString("hex");
-  const address =
-    "0x" + crypto.createHash("sha256").update(priv).digest("hex").slice(0, 40);
+  const ethers = loadEthersEarly();
+  let priv, address;
+  if (ethers) {
+    const w = ethers.Wallet.createRandom();
+    priv = w.privateKey;
+    address = w.address; // real, spendable address
+  } else {
+    priv = "0x" + crypto.randomBytes(32).toString("hex");
+    address = null; // derived on first on-chain use (needs ethers)
+  }
   const wallet = { address, createdAt: new Date().toISOString() };
-  // Private key stored locally with tight perms; address is what we display.
-  fs.writeFileSync(WALLET_FILE, JSON.stringify({ ...wallet, priv }, null, 2), {
-    mode: 0o600,
-  });
+  fs.writeFileSync(WALLET_FILE, JSON.stringify({ ...wallet, priv }, null, 2), { mode: 0o600 });
+  console.warn(
+    "\n[gg-optimizer] New local wallet created: " + (address || "(install ethers to see the on-chain address)") +
+    "\n  * BACK UP ~/.gg-optimizer/wallet.json — losing it loses any GG in the wallet." +
+    "\n  * Keep only SMALL amounts here (it is a plain keyfile, chmod 600)." +
+    "\n  * We will NEVER ask for your private key.\n"
+  );
   return wallet;
 }
 
@@ -87,7 +121,7 @@ function planPremiumAction({ network = process.env.GG_OPTIMIZER_NETWORK || "mock
     };
   }
 
-  const balance = mockBalance(wallet.address, 0);
+  const balance = mockBalance(wallet.address || "local", 0);
   const enough = balance >= COST_PER_FIX;
   return {
     wallet,
@@ -101,7 +135,7 @@ function planPremiumAction({ network = process.env.GG_OPTIMIZER_NETWORK || "mock
       : `Free allowance used. Need ${COST_PER_FIX} GG to continue. Wallet ${wallet.address} balance: ${balance} GG.`,
     commit() {
       if (!enough) throw new Error("insufficient GG balance");
-      mockBalance(wallet.address, -COST_PER_FIX);
+      mockBalance(wallet.address || "local", -COST_PER_FIX);
       usage.premiumRuns += 1;
       usage.creditsSpent += COST_PER_FIX;
       writeUsage(usage);
@@ -144,6 +178,7 @@ async function onchainBurn(privKey, rpc, amountGg) {
 
 // Async planner for the real on-chain path.
 async function planPremiumActionOnchain(rpc) {
+  getOrCreateWallet(); // ensures wallet exists + migrates any pseudo-address
   const walletFull = JSON.parse(fs.readFileSync(WALLET_FILE, "utf8"));
   const usage = readUsage();
   const freeLeft = Math.max(0, FREE_PREMIUM_RUNS - usage.premiumRuns);
