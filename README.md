@@ -125,6 +125,16 @@ Output (paste into README.md):
 
 The badge reflects your latest scan: **clean** (green), **N findings** (yellow), or **N high severity** (red). Regenerate it in CI so it always matches the code.
 
+## Security &amp; supply chain
+
+- **Zero runtime dependencies** — the published package is 10 small plain-JS files. Verify yourself: `npm pack hardhat-gg-optimizer --dry-run`.
+- `hardhat` and `ethers` are **peer dependencies** (your project's own copies are used; `ethers` is optional and only needed for the opt-in on-chain mode). Any dependency alerts you see on scanners like socket.dev come from those trees, not from this package's code. Peer ranges are pinned to modern releases (`hardhat ^2.22`, `ethers ^6.13`) to avoid old CVE-laden versions.
+- What the plugin accesses, and why:
+  - **Filesystem**: reads your `contracts/*.sol` sources to scan them; reads/writes `~/.gg-optimizer/` (wallet keystore + usage counters).
+  - **Environment variables**: only its own config (`GG_OPTIMIZER_NETWORK`, `GG_OPTIMIZER_YES`, `GG_OPTIMIZER_PASSWORD`, `GGCHAIN_RPC`).
+  - **Network**: none by default. Only in opt-in `ggchain` mode, and only to the official `https://rpc.gghyper.net` endpoint.
+- Your code, keys and reports **never leave your machine**.
+
 ## What it checks
 
 **Gas (GG-GAS-\*)**: string `require` messages, `memory` vs `calldata`, `i++` vs unchecked `++i`, `.length` in loop conditions, redundant `= 0` init, `x > 0` vs `x != 0`, `public` → `external` candidates, `immutable`/`constant` candidates, unpacked small-type storage variables.
