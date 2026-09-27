@@ -10,6 +10,8 @@ A free, zero-config Hardhat plugin that scans your Solidity for **gas savings** 
 npm install --save-dev hardhat-gg-optimizer
 ```
 
+**Hardhat 2** (CommonJS config):
+
 ```js
 // hardhat.config.js
 require("hardhat-gg-optimizer");
@@ -18,6 +20,19 @@ module.exports = {
   solidity: "0.8.20",
   // ggOptimizer: { autoScan: false }  // opt out of auto-run after compile
 };
+```
+
+**Hardhat 3** (ESM config):
+
+```ts
+// hardhat.config.ts
+import ggOptimizer from "hardhat-gg-optimizer/hh3";
+
+export default {
+  plugins: [ggOptimizer],
+  solidity: "0.8.20",
+};
+// auto-scan runs after `npx hardhat build`; opt out with GG_OPTIMIZER_AUTOSCAN=0
 ```
 
 That's it. Run `npx hardhat compile` (or `npx hardhat gg-scan`) and you'll get a report like:
